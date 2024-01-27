@@ -1,5 +1,5 @@
 length = 2;
-filename = "noise_";
+filename = "sehatbakhsh_noisy_";
 filepath = "ECE113/ece113dw_project/audio_data/";
 
 data = zeros(1,16000);
