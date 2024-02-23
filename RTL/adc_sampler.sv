@@ -1,8 +1,8 @@
 module adc_sampler(clk, sample_clk, sample_out, new_sample_out);
 	input 			clk;
 	input				sample_clk;
-	output [11:0] 	sample_out;
-	output 			new_sample_out;
+	output logic [11:0] 	sample_out;
+	output logic			new_sample_out;
 	
 	wire [11:0] adc_out;
 	
