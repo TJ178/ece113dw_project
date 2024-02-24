@@ -1,3 +1,6 @@
+#   Generates a memory file samples.mem that can be used in RTL simulation.
+#   Takes in any wav audio file and converts it into a format readable by $readmemb
+
 import argparse
 import numpy as np
 from scipy.io import wavfile as wave
@@ -16,17 +19,11 @@ print("Frames:", data.shape[0])
 precision = 2**args.bitwidth
 oldprecision = 2**(sample_bits)
 
-print(min(data))
-print(max(data))
-
 min_val = np.iinfo(type(data[0])).min
 
 data = np.float64(data)
 data -= min_val
 data = np.int16(data / oldprecision * precision)
-
-print(min(data))
-print(max(data))
 
 form =  "0" + str(args.bitwidth) + "b"
 with open("samples.mem", "w") as f:
