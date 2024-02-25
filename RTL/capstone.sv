@@ -7,9 +7,9 @@ module capstone(clk, rst, ledOut);
 	
 	
 	// 8khz clock generator
-	wire adc_clk;
+	wire adc_clk, pll_locked;
 	
-	clkgen gen(clk, adc_clk);
+	clkgen gen(rst, clk, adc_clk, pll_locked);
 	
 	// adc sampler
 	wire [11:0] adc_out;
