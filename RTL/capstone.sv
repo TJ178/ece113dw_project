@@ -7,9 +7,22 @@ module capstone(clk, rst, ledOut);
 	
 	
 	// 8khz clock generator
-	wire adc_clk, pll_locked;
+	logic adc_clk, pll_locked;
 	
-	clkgen gen(rst, clk, adc_clk, pll_locked);
+	//clkgen gen(rst, clk, adc_clk, pll_locked);
+	logic [$clog2(6250)-1:0] clk_cntr = 'b0;
+	always_ff @ (posedge clk) begin
+		if(rst) begin
+			clk_cntr <= 'b0;
+			adc_clk <= 'b0; 
+		end else if (clk_cntr >= 'd6250) begin
+			clk_cntr <= 'b0;
+			adc_clk <= ~adc_clk;
+		end else begin
+			clk_cntr <= clk_cntr + 1;
+			adc_clk <= adc_clk;
+		end
+	end
 	
 	// adc sampler
 	wire [11:0] adc_out;
