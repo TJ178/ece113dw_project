@@ -1,8 +1,8 @@
-length = 2;
-filename = "sehatbakhsh_noisy_";
-filepath = "ECE113/ece113dw_project/audio_data/";
+length = 1;
+filename = "eggert_short_";
+filepath = "ece113dw_project/audio_data/";
 
-data = zeros(1,16000);
+data = zeros(1,8000*length);
 num = 0;
 while(1)
     prompt = "num=" + num + " Record more? Y/N [Y]: ";
