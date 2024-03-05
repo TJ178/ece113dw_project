@@ -9,13 +9,38 @@ module cnn
 );
 
 // user changable
-localparam SAMPLE_BITS = 16;				// bits per value
-localparam RAM_WIDTH_MULTIPLIER = 2;	// how many samples in 1 RAM read
-localparam RAM_DEPTH = 16;					// total number of values in RAM
+localparam SAMPLE_BITS 						= 16; // bits per value
+localparam RAM_WIDTH_MULTIPLIER 			= 2;	// how many samples in 1 RAM read
+
+localparam MEL_SPECTRUM_BANDS 			= 40;
+localparam NUM_WINDOWS 						= 0;	//TODO need to calculate
+
+localparam CONVA_KERNEL_FILEPATH 		= "";
+localparam CONVA_KERNEL_SIZE 				= 7;
+
+localparam POOLA_SIZE 						= 3;
+
+localparam CONVB_KERNEL_FILEPATH 		= "";
+localparam CONVB_KERNEL_SIZE 				= 5;
+
+localparam FULLY_CONNECTED_FILEPATH 	= "";
+localparam FULLY_CONNECTED_SIZE 			= 0; 	//TODO NEED TO CALCULATE
 
 // do not edit
-localparam RAM_WIDTH = SAMPLE_BITS*RAM_WIDTH_MULTIPLIER;
+localparam CONVA_INPUT_X 					= MEL_SPECTRUM_BANDS;
+localparam CONVA_INPUT_Y					= NUM_WINDOWS;
 
+localparam POOLA_INPUT_X					= MEL_SPECTRUM_BANDS;
+localparam POOLA_INPUT_Y					= NUM_WINDOWS;
+
+localparam CONVB_INPUT_X 					= POOLA_INPUT_X / POOLA_SIZE;
+localparam CONVB_INPUT_Y 					= POOLA_INPUT_Y / POOLA_SIZE;
+
+localparam FULLY_CONNECTED_INPUT_X 		= CONVB_INPUT_X;
+localparam FULLY_CONNECTED_INPUT_Y 		= CONVB_INPUT_Y;
+
+localparam RAM_WIDTH 						= SAMPLE_BITS*RAM_WIDTH_MULTIPLIER;
+localparam RAM_DEPTH							= CONVA_INPUT_SIZE / RAM_WIDTH_MULTIPLIER;
 
 // PING PONG RAM
 
@@ -51,18 +76,19 @@ ramB
 	.q(ramB_q)
 );
 
-// CONVOLUTIONAL LAYERS
+// CONVOLUTION LAYER 1
 logic [RAM_WIDTH-1:0] convA_data_wr;
 logic [$clog2(RAM_DEPTH)-1:0] convA_addr_rd, convA_addr_wr;
 logic convA_start, convA_we, convA_done;
 
 convolution #(
-	.K_SIZE(8),
-	.INPUT_SIZE(128),
-	.OUTPUT_SIZE(128),
+	.K_SIZE(CONVA_KERNEL_SIZE),
+	.INPUT_X(CONVA_INPUT_X),
+	.INPUT_Y(CONVA_INPUT_Y),
 	.BIT_WIDTH (SAMPLE_BITS),
 	.RAM_DEPTH(RAM_DEPTH),
-	.KERNEL_FILEPATH("")
+	.RAM_WIDTH_MULTIPLIER(RAM_WIDTH_MULTIPLIER),
+	.KERNEL_FILEPATH(CONVA_KERNEL_FILEPATH)
 )
 convA
 (
@@ -77,17 +103,44 @@ convA
 	.done(convA_done)
 );
 
+// POOL LAYER
+logic [RAM_WIDTH-1:0] pool_data_wr;
+logic [$clog2(RAM_DEPTH)-1:0] pool_addr_rd, pool_addr_wr;
+logic pool_start, pool_we, pool_done;
+
+pooling_layer #(
+	.INPUT_X(POOLA_INPUT_X),
+	.INPUT_Y(POOLA_INPUT_Y),
+	.POOL_SIZE(POOLA_SIZE),
+	.STRIDE(POOLA_SIZE),
+	.BIT_WIDTH(SAMPLE_BITS),
+	.RAM_WIDTH_MULTIPLIER(RAM_WIDTH_MULTIPLIER),
+)
+poolA
+(
+	.clk(clk),
+	.rst(rst),
+	.start(pool_start),
+	.data_rd(ramB_q),
+	.addr_rd(pool_addr_rd),
+	.addr_wr(pool_addr_wr),
+	.wren(pool_we),
+	.done(pool_done)
+);
+
+
+// CONVOLUTION LAYER 2
 logic [RAM_WIDTH-1:0] convB_data_wr;
 logic [$clog2(RAM_DEPTH)-1:0] convB_addr_rd, convB_addr_wr;
 logic convB_start, convB_we, convB_done;
 
 convolution #(
-	.K_SIZE(8),
-	.INPUT_SIZE(128),
-	.OUTPUT_SIZE(128),
+	.K_SIZE(CONVB_KERNEL_SIZE),
+	.INPUT_SIZE(CONVB_INPUT_SIZE),
 	.BIT_WIDTH (SAMPLE_BITS),
 	.RAM_DEPTH(RAM_DEPTH),
-	.KERNEL_FILEPATH("")
+	.KERNEL_FILEPATH(CONVB_KERNEL_FILEPATH),
+	.RAM_WIDTH_MULTIPLIER(RAM_WIDTH_MULTIPLIER)
 )
 convB
 (
@@ -104,13 +157,14 @@ convB
 
 
 // CONTROLLER LOGIC
-localparam NUM_STATES = 4;
+localparam NUM_STATES = 7;
 localparam RST = 0;
 localparam CONV_A = 1;
 localparam POOL_A = 2;
 localparam CONV_B = 3;
-localparam POOL_B = 4;
-localparam FULLY_CONNECTED = 5;
+localparam FULLY_CONNECTED = 4;
+localparam CLASSIFICATION = 5;
+localparam DONE = 6;
 
 
 logic [$clog2(NUM_STATES)-1:0] state, state_d;
@@ -124,7 +178,15 @@ always_ff @ (posedge clk) begin
 end
 
 always_comb begin
-	state_d = 'b0;
+	case(state)
+		RST: begin
+		
+		end
+		default: begin
+		
+		end
+	
+	endcase
 end
 
 

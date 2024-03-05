@@ -1,8 +1,10 @@
 module pooling_layer #(
-	parameter INPUT_SIZE = 128,
+	parameter INPUT_X = 128,
+	parameter INPUT_Y = 128,
 	parameter POOL_SIZE = 4,
 	parameter STRIDE = 2,
 	parameter BIT_WIDTH = 16,
+	parameter RAM_WIDTH_MULTIPLIER = 2
 )
 (
 	input clk,
