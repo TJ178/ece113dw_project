@@ -10,7 +10,7 @@ module cnn
 
 // user changable
 localparam SAMPLE_BITS 						= 16; // bits per value
-localparam RAM_WIDTH_MULTIPLIER 			= 2;	// how many samples in 1 RAM read
+localparam RAM_WIDTH_MULTIPLIER 			= 4;	// how many samples in 1 RAM read
 
 localparam MEL_SPECTRUM_BANDS 			= 40;
 localparam NUM_WINDOWS 						= 0;	//TODO need to calculate
