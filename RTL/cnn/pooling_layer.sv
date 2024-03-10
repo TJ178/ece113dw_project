@@ -4,18 +4,18 @@ module pooling_layer #(
 	parameter POOL_SIZE = 3,
 	parameter STRIDE = 3,
 	parameter BIT_WIDTH = 16,
-	parameter RAM_WIDTH_MULTIPLIER = 2
+	parameter NUM_RAM_SPLITS = 2
 )
 (
-	input clk,
-	input rst,
-	input start,
-	input  [(BIT_WIDTH*RAM_WIDTH_MULTIPLIER)-1:0] 	data_rd,
-	output [$clog2(INPUT_SIZE/BIT_WIDTH)-1:0] 		addr_rd,
-	output [(BIT_WIDTH*RAM_WIDTH_MULTIPLIER)-1:0] 	data_wr,
-	output [$clog2(INPUT_SIZE/BIT_WIDTH)-1:0] 		addr_wr,
-	output wren,
-	output done
+	input 													clk,
+	input 													rst,
+	input 													start,
+	input  [(BIT_WIDTH * NUM_RAM_SPLITS)-1:0] 	data_rd,
+	output [$clog2(INPUT_X)-1:0]					 	addr_rd,
+	output [BIT_WIDTH-1:0] 								data_wr,
+	output [$clog2(INPUT_X)-1:0] 						addr_wr,
+	output [NUM_RAM_SPLITS-1:0] 						wren,
+	output 													done
 );
 
 
@@ -40,8 +40,6 @@ maxpool_kernel #(
 // SHIFT REGISTERS
 logic [(BIT_WIDTH * POOL_SIZE)-1:0] shift_in;
 logic [POOL_SIZE-1:0] shift_en;
-logic [$clog2(INPUT_X)-1:0] shift_x [0:POOL_SIZE];
-logic [$clog2(INPUT_Y)-1:0] shift_y [0:POOL_SIZE];
 
 genvar  i;
 generate begin
@@ -59,20 +57,6 @@ generate begin
 	end
 endgenerate
 
-// output shift register
-logic [BIT_WIDTH-1:0] output_shift_in;
-logic output_shift_en;
-shift_reg #(
-	.SIZE(RAM_WIDTH_MULTIPLIER*BIT_WIDTH),
-	.SHIFT_AMT(BIT_WIDTH)
-) out_shift (
-	.clk(clk),
-	.rst(rst),
-	.in(output_shift_in),
-	.out(data_wr_d),
-	.shift_en(output_shift_en)
-);
-
 
 // FSM
 localparam RST = 0;
@@ -84,10 +68,13 @@ logic [1:0] state, state_d;
 
 logic [$clog2(OUT_X)-1:0] x, x_d;
 logic [$clog2(OUT_Y)-1:0] y, y_d;
-logic [$clog2(INPUT_SIZE/BIT_WIDTH)-1:0] addr_rd_d;
-logic [$clog2(INPUT_SIZE/BIT_WIDTH)-1:0] addr_wr_d;
+logic [$clog2(INPUT_X)-1:0] addr_rd_d;
+logic [$clog2(INPUT_X)-1:0] addr_wr_d;
 logic wren_d;
-logic [(BIT_WIDTH*RAM_WIDTH_MULTIPLIER)-1:0] data_wr_d;
+logic [BIT_WIDTH-1:0] data_wr_d;
+
+
+logic [$clog2(POOL_SIZE)-1:0] init_counter, init_counter_d;
 
 
 always_ff @ (posedge clk) begin
@@ -130,25 +117,22 @@ always_comb begin
 			done_d = 'b0;
 		end
 		
-		// Read data from memory
-		READ: begin
-			// check if we need to get all new values
-			if(x == 0) begin
-			
+		// Read for start of first line
+		INIT: begin
+			init_counter_d = init_counter + 1;
+			if(init_counter+1 == POOL_SIZE) begin
+				state_d = RUN;
 			end else begin
-				
+				state_d = INIT;
+				addr_rd_d = addr_rd + 1;
+				shift_in = 
+				shift_en = 
 			end
-			
-		end
+		end 
 		
-		// write kernel output to shift_reg, output if possible, increment counters
-		INC: begin
-			state_d = READ;
+		RUN: begin
 			
-			// write data back
-			addr_wr_d = x * OUT_X + y;
-			wren_d = 1'b1;
-			
+		
 			// increment counters
 			if(x+STRIDE >= OUT_X) begin
 				x_d = 0;

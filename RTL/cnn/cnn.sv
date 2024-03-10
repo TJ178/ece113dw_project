@@ -9,11 +9,11 @@ module cnn
 );
 
 // user changable
-localparam SAMPLE_BITS 						= 16; // bits per value
-localparam RAM_WIDTH_MULTIPLIER 			= 4;	// how many samples in 1 RAM read
+localparam SAMPLE_BITS 						= 16; 	// bits per value
+localparam RAM_SPLIT							= 8;		// number of rams to split into
 
 localparam MEL_SPECTRUM_BANDS 			= 40;
-localparam NUM_WINDOWS 						= 0;	//TODO need to calculate
+localparam NUM_WINDOWS 						= 256;	//TODO need to calculate
 
 localparam CONVA_KERNEL_FILEPATH 		= "";
 localparam CONVA_KERNEL_SIZE 				= 7;
@@ -39,41 +39,40 @@ localparam CONVB_INPUT_Y 					= POOLA_INPUT_Y / POOLA_SIZE;
 localparam FULLY_CONNECTED_INPUT_X 		= CONVB_INPUT_X;
 localparam FULLY_CONNECTED_INPUT_Y 		= CONVB_INPUT_Y;
 
-localparam RAM_WIDTH 						= SAMPLE_BITS*RAM_WIDTH_MULTIPLIER;
-localparam RAM_DEPTH							= CONVA_INPUT_SIZE / RAM_WIDTH_MULTIPLIER;
+localparam NUM_ROWS_PER_RAM				= $ceil(MEL_SPECTRUM / RAM_SPLIT);
+localparam SPLIT_RAM_DEPTH 				= NUM_WINDOWS * NUM_ROWS_PER_RAM;
 
 // PING PONG RAM
 
-logic [RAM_WIDTH-1:0] ramA_data, ramB_data, ramA_q, ramB_q;
-logic [$clog2(RAM_DEPTH)-1:0] ramA_addr, ramB_addr;
-logic ramA_we, ramB_we;
+logic [$clog2(SPLIT_RAM_DEPTH)-1:0] ramA_addr, ramB_addr;
+logic [SAMPLE_BITS-1:0] ramA_data_wr, ramB_data_wr;
+logic [SAMPLE_BITS * RAM_SPLIT-1:0] ramA_q, ramB_q;
+logic [RAM_SPLIT-1:0] ramA_wren, ramB_wren;
 
-single_port_ram 
-#(
-	.DATA_WIDTH(RAM_WIDTH),
-	.ADDR_WIDTH(RAM_DEPTH)
-)
-ramA
-(
-	.data(ramA_data),
-	.addr(ramA_addr),
-	.we(ramA_we),
+split_ram #(
+	.NUM_RAMS(RAM_SPLIT),
+	.RAM_DEPTH(SPLIT_RAM_DEPTH),
+	.RAM_WIDTH(SAMPLE_BITS)
+)ramA(
 	.clk(clk),
-	.q(ramA_q)
+	.rst(rst),
+	.data_wr(ramA_data_wr),
+	.data_layer_wren(ramA_wren),
+	.addr(ramA_addr),
+	.data_rd(ramA_q)
 );
 
-single_port_ram 
-#(
-	.DATA_WIDTH(RAM_WIDTH),
-	.ADDR_WIDTH(RAM_DEPTH)
-)
-ramB
-(
-	.data(ramB_data),
-	.addr(ramB_addr),
-	.we(ramB_we),
+split_ram #(
+	.NUM_RAMS(RAM_SPLIT),
+	.RAM_DEPTH(SPLIT_RAM_DEPTH),
+	.RAM_WIDTH(SAMPLE_BITS)
+)ramB(
 	.clk(clk),
-	.q(ramB_q)
+	.rst(rst),
+	.data_wr(ramB_data_wr),
+	.data_layer_wren(ramB_wren),
+	.addr(ramB_addr),
+	.data_rd(ramB_q)
 );
 
 // CONVOLUTION LAYER 1
@@ -86,8 +85,7 @@ convolution #(
 	.INPUT_X(CONVA_INPUT_X),
 	.INPUT_Y(CONVA_INPUT_Y),
 	.BIT_WIDTH (SAMPLE_BITS),
-	.RAM_DEPTH(RAM_DEPTH),
-	.RAM_WIDTH_MULTIPLIER(RAM_WIDTH_MULTIPLIER),
+	.NUM_RAM_SPLITS(RAM_SPLIT),
 	.KERNEL_FILEPATH(CONVA_KERNEL_FILEPATH)
 )
 convA
@@ -114,7 +112,7 @@ pooling_layer #(
 	.POOL_SIZE(POOLA_SIZE),
 	.STRIDE(POOLA_SIZE),
 	.BIT_WIDTH(SAMPLE_BITS),
-	.RAM_WIDTH_MULTIPLIER(RAM_WIDTH_MULTIPLIER),
+	.NUM_RAM_SPLITS(RAM_SPLIT),
 )
 poolA
 (
@@ -136,11 +134,11 @@ logic convB_start, convB_we, convB_done;
 
 convolution #(
 	.K_SIZE(CONVB_KERNEL_SIZE),
-	.INPUT_SIZE(CONVB_INPUT_SIZE),
+	.INPUT_X(CONVB_INPUT_X),
+	.INPUT_Y(CONVB_INPUT_Y),
 	.BIT_WIDTH (SAMPLE_BITS),
-	.RAM_DEPTH(RAM_DEPTH),
-	.KERNEL_FILEPATH(CONVB_KERNEL_FILEPATH),
-	.RAM_WIDTH_MULTIPLIER(RAM_WIDTH_MULTIPLIER)
+	.NUM_RAM_SPLITS(RAM_SPLIT),
+	.KERNEL_FILEPATH(CONVB_KERNEL_FILEPATH)
 )
 convB
 (
