@@ -22,7 +22,7 @@ module convolution #(
 
 single_port_rom
 #(
-	.DATA_WIDTH(SAMPLE_BITS),
+	.DATA_WIDTH(BIT_WIDTH),
 	.ADDR_WIDTH($clog2(KERNEL_SIZE*KERNEL_SIZE)),
 	.INIT_FILEPATH(KERNEL_FILEPATH)
 ) kernel_rom (

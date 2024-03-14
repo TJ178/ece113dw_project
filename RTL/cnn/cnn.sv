@@ -5,7 +5,7 @@ module cnn
 	input in,
 	input in_valid,
 	output out,
-	output out_valid,
+	output out_valid
 );
 
 // user changable
@@ -76,7 +76,7 @@ split_ram #(
 );
 
 // CONVOLUTION LAYER 1
-logic [RAM_WIDTH-1:0] convA_data_wr;
+logic [SAMPLE_BITS * RAM_SPLIT-1:0] convA_data_wr;
 logic [$clog2(RAM_DEPTH)-1:0] convA_addr_rd, convA_addr_wr;
 logic convA_start, convA_we, convA_done;
 
@@ -102,7 +102,7 @@ convA
 );
 
 // POOL LAYER
-logic [RAM_WIDTH-1:0] pool_data_wr;
+logic [SAMPLE_BITS * RAM_SPLIT-1:0] pool_data_wr;
 logic [$clog2(RAM_DEPTH)-1:0] pool_addr_rd, pool_addr_wr;
 logic pool_start, pool_we, pool_done;
 
@@ -112,7 +112,7 @@ pooling_layer #(
 	.POOL_SIZE(POOLA_SIZE),
 	.STRIDE(POOLA_SIZE),
 	.BIT_WIDTH(SAMPLE_BITS),
-	.NUM_RAM_SPLITS(RAM_SPLIT),
+	.NUM_RAM_SPLITS(RAM_SPLIT)
 )
 poolA
 (
@@ -128,7 +128,7 @@ poolA
 
 
 // CONVOLUTION LAYER 2
-logic [RAM_WIDTH-1:0] convB_data_wr;
+logic [SAMPLE_BITS * RAM_SPLIT-1:0] convB_data_wr;
 logic [$clog2(RAM_DEPTH)-1:0] convB_addr_rd, convB_addr_wr;
 logic convB_start, convB_we, convB_done;
 

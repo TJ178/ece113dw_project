@@ -4,6 +4,7 @@ module capstone_tb();
 
 logic rst = 1'b0;
 logic clk = 1'b0;
+logic ledOut;
 
 always begin
 	#1;

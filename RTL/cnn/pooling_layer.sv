@@ -19,8 +19,8 @@ module pooling_layer #(
 );
 
 
-localparam OUT_X = INPUT_X / POOL_STRIDE;
-localparam OUT_Y = INPUT_Y / POOL_STRIDE;
+localparam OUT_X = INPUT_X / STRIDE;
+localparam OUT_Y = INPUT_Y / STRIDE;
 localparam OUT_SIZE = OUT_X * OUT_Y;
 
 
@@ -38,12 +38,12 @@ maxpool_kernel #(
 
 
 // SHIFT REGISTERS
-logic [(BIT_WIDTH * POOL_SIZE)-1:0] shift_in;
-logic [POOL_SIZE-1:0] shift_en;
+logic [(BIT_WIDTH * POOL_SIZE)-1:0] shift_in_d, shift_in;
+logic [POOL_SIZE-1:0] shift_en_d, shift_en;
 
 genvar  i;
-generate begin
-	for(i = 0; i < POOL_SIZE; i++) begin : GEN_SHIFT_REG
+generate 
+	for(i = 0; i < POOL_SIZE; i = i + 1) begin : GEN_SHIFT_REG
 		shift_reg #(
 			.SIZE(POOL_SIZE * BIT_WIDTH),
 			.SHIFT_AMT(BIT_WIDTH)
@@ -51,7 +51,7 @@ generate begin
 			.clk(clk),
 			.rst(rst),
 			.in(shift_in[BIT_WIDTH * i +: BIT_WIDTH]),
-			.out(kernel_in[BIT_WIDTH*POOL_SIZE * i += BIT_WIDTH*POOL_SIZE]),
+			.out(kernel_in[BIT_WIDTH*POOL_SIZE * i +: BIT_WIDTH*POOL_SIZE]),
 			.shift_en(shift_en[i])
 		);
 	end
@@ -60,11 +60,12 @@ endgenerate
 
 // FSM
 localparam RST = 0;
-localparam READ = 1;
-localparam DONE = 2;
-localparam INC = 3;
+localparam INIT = 1;
+localparam RUN = 2;
+localparam DONE = 3;
 
 logic [1:0] state, state_d;
+logic done_d;
 
 logic [$clog2(OUT_X)-1:0] x, x_d;
 logic [$clog2(OUT_Y)-1:0] y, y_d;
@@ -75,6 +76,7 @@ logic [BIT_WIDTH-1:0] data_wr_d;
 
 
 logic [$clog2(POOL_SIZE)-1:0] init_counter, init_counter_d;
+logic [$clog2(NUM_RAM_SPLITS-POOL_SIZE)-1:0] split_offset, split_offset_d;
 
 
 always_ff @ (posedge clk) begin
@@ -86,6 +88,10 @@ always_ff @ (posedge clk) begin
 		wren 	<= 'b0;
 		x <= 'b0;
 		y <= 'b0;
+		split_offset <= 'b0;
+		init_counter <= 'b0;
+		shift_en <= 'b0;
+		shift_in <= 'b0;
 		done <= 'b0;
 	end else begin
 		state <= state_d;
@@ -95,6 +101,10 @@ always_ff @ (posedge clk) begin
 		wren <= wren_d;
 		x <= x_d;
 		y <= y_d;
+		split_offset <= split_offset_d;
+		init_counter <= init_counter_d;
+		shift_en <= shift_en_d;
+		shift_in <= shift_in_d;
 		done <= done_d;
 	end
 end
@@ -106,9 +116,9 @@ always_comb begin
 	addr_wr_d = addr_wr;
 	addr_rd_d = addr_rd;
 	
-	case(stage)
+	case(state)
 		RST: begin
-			X_d = 'b0;
+			x_d = 'b0;
 			y_d = 'b0;
 			addr_rd_d = 'b0;
 			addr_wr_d = 'b0;
@@ -121,34 +131,42 @@ always_comb begin
 		INIT: begin
 			init_counter_d = init_counter + 1;
 			if(init_counter+1 == POOL_SIZE) begin
+				init_counter_d = 'b0;
 				state_d = RUN;
 			end else begin
 				state_d = INIT;
-				addr_rd_d = addr_rd + 1;
-				shift_in = 
-				shift_en = 
 			end
+			addr_rd_d = addr_rd + 1;
+			shift_in_d = data_rd[ (POOL_SIZE * BIT_WIDTH) * split_offset +: (POOL_SIZE * BIT_WIDTH)];
+			shift_en_d = {POOL_SIZE{1'b1}};
 		end 
 		
 		RUN: begin
-			
+			// stage swap cases:
 		
 			// increment counters
 			if(x+STRIDE >= OUT_X) begin
+				state_d = INIT;
+				split_offset_d = split_offset + 1;
 				x_d = 0;
 				if(y+STRIDE >= OUT_Y) begin
 					state_d = DONE;
 					done_d = 1'b1;
 				end else begin
 					y_d = y + STRIDE;
+				end
 			end else begin
 				x_d = x + STRIDE;
 				y_d = y;
 			end
+			
+			addr_rd_d = addr_rd + STRIDE;
+			shift_in_d = data_rd[ (POOL_SIZE * BIT_WIDTH) * split_offset +: (POOL_SIZE * BIT_WIDTH)];
+			shift_en_d = {POOL_SIZE{1'b1}};
 		end
 		
 		DONE: begin
-		
+			done_d = 'b1;
 		end
 		
 	endcase

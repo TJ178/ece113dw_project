@@ -1,7 +1,8 @@
-module split_ram #(
+module split_rom #(
 	parameter NUM_RAMS = 8,
 	parameter RAM_DEPTH = 256,
-	parameter RAM_WIDTH = 16
+	parameter RAM_WIDTH = 16,
+	parameter string INIT_FILEPATH [0:NUM_RAMS-1] = '{default:""}
 )(
 	input clk,
 	input rst,
@@ -15,13 +16,13 @@ module split_ram #(
 genvar i;
 generate
 	for (i = 0; i < NUM_RAMS; i = i + 1) begin : rams
-		single_port_ram #(
+		single_port_rom #(
 			.DATA_WIDTH(RAM_WIDTH),
 			.ADDR_WIDTH($clog2(RAM_DEPTH))
-		) ram (
+			.INIT_FILEPATH=""
+		) rom (
 			.data(data_wr),
 			.addr(addr),
-			.we(data_layer_wren[i]),
 			.q(data_rd[RAM_WIDTH * i +: RAM_WIDTH])
 		);
 	end

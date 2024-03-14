@@ -3,8 +3,8 @@ module maxpool_kernel #(
 	parameter BIT_WIDTH = 12
 )
 (
-input 	[BIT_WIDTH-1:0] in 	[0:SIZE*SIZE-1];
-output 	[BIT_WIDTH-1:0]	out;
+input 	[BIT_WIDTH-1:0] in 	[0:SIZE*SIZE-1],
+output 	[BIT_WIDTH-1:0]	out
 );
 
 logic [BIT_WIDTH-1:0] max;
