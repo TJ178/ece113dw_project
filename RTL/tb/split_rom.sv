@@ -18,8 +18,8 @@ generate
 	for (i = 0; i < NUM_RAMS; i = i + 1) begin : rams
 		single_port_rom #(
 			.DATA_WIDTH(RAM_WIDTH),
-			.ADDR_WIDTH($clog2(RAM_DEPTH))
-			.INIT_FILEPATH=""
+			.ADDR_WIDTH($clog2(RAM_DEPTH)),
+			.INIT_FILEPATH(INIT_FILEPATH[i])
 		) rom (
 			.data(data_wr),
 			.addr(addr),
