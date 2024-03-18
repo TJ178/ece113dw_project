@@ -21,7 +21,7 @@
 module vga(
 		input vgaclk,					//pixel clock: 25MHz
 		input rst,					//asynchronous reset
-		input image[0:479][0:639][11:0],
+		input image[0:255][0:39][15:0],
 		output hsync,				//horizontal sync out
 		output vsync,				//vertical sync out
 		output reg [3:0] red,	//red vga output
@@ -71,6 +71,12 @@ module vga(
 
 	assign hsync = (hc < hpulse) ? 0:1;
 	assign vsync = (vc < vpulse) ? 0:1;
+	
+	//convert to input address space:
+	reg [$clog2[256]-1:0] h_addr;
+	reg [$clog2[40]-1:0] v_addr;
+	assign h_addr = hc > 512 ? 0 : h_addr >> 1;
+	assign v_addr = vc > 480 ? 0 : vc / 12;
 
 	always @(*)
 	begin
@@ -78,11 +84,15 @@ module vga(
 		if (vc >= vbp && vc < vfp && hc >= hbp && hc < hfp)
 		begin
 			//addrb = ((((vc - vbp) / 10) * 64) + ((hc - hbp) / 10));
-			
-			red = image[vc][hc][3:0];
-			green = image[vc][hc][7:4];
-			blue = image[vc][hc][11:8];
-			
+			if(hc > 512) begin
+				red  = 'b0;
+				green = 'b0;
+				blue = b'0;
+			end else begin
+				red = image[h_addr][v_addr] > 512 ? 4'b1111 : image[h_addr][v_addr][4:1];
+				green = image[h_addr][v_addr] < 512 ? 4'b0 : image[h_addr][v_addr][15:12];
+				blue = image[h_addr][v_addr] < 512 ? 4'b0 : image[h_addr][v_addr][15:12];
+			end
 		end
 		// we're outside active horizontal range so display black
 		else
